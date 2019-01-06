@@ -1,0 +1,23 @@
+<!--Hay dos tipos de etiquetas para incorporar javascript en html:
+        
+        <%= %> Esta etiqueta es para encerrar lo que quieo mostrar
+        <% %> Esta etiqueta es para poner procesos lògicos y que no se muestren/no arrojen error
+        
+En los casos lógicos, cada línea que sea parte de la lógica del código debe ir encerrada por esas etiquetas, la parte del html que quiero que se muestre en caso de que se dé esa lógica, no deben ir encerradas en etiquetas
+
+-->
+<!--Include header-->
+<% include partials/header %>
+
+<h1> You fell in love with: <%= thingVar.toUpperCase() %> </h1>
+
+<% if(thingVar.toLowerCase() === "rusty") { %>
+<p>GOOD CHOICE! RUSTY IS THE BEST!</p>
+<% } else {%>
+    <p>Bad choice! You should have said Rusty!</p>
+    
+<%  } %>
+<p>P.S. this is the love.ejs file</p>
+
+<!--Inlcude footer-->
+<% include partials/footer %>

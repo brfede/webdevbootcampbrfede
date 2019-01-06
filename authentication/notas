@@ -1,0 +1,140 @@
+***********************************************
+                AUTHENTICATION
+***********************************************
+Para la utenticación vamos a usar 3 principales paquetes
+    *Passport
+    *Passport-localhost
+    *Passport-local-mongoose
+Passporte es un paquete con más de 300 estrategias de autenticación es flexible y modular, puede ser utilizado en cualquier aplicación express
+
+Passport-local es la autenticación más básica, usuario/email + password
+
+Passport-local-mongoose ayuda a que sea más rápido y simple
+
+El concepto clave para la autenticación es lo que se llama "Sesiones".
+
+HTTP es un protocolo stateless, esto significa que cuando se envía un request desde el browser al servidor, estos request no tienen información
+sobre mi historial o requests previos que haya realizado, no están conectados, un request no tiene estado, es una transacción de única vez, lo que complica la autenticación
+ya que quiero permanecer logeado, quiero que el servidor sepa que estoy conectado. La forma que se hace es usando sesiones, esto hace que http no sea stateless, es una forma de 
+proveer estado, entonces cada request que realizo en la aplicación cuando estoy logeado, hay una pequeña información que se envía en el request que está guardada que es enviada al servidor
+que no es ni el usuario ni la contraseña, sino una pequeña información que está codificada para que sea secreta y cuando llegue al servidor, passport toma ese secreto la traduce en algo que
+entienda, lo desencripta, y usa esa información para decir que alguien está logeado o no
+++++++++++++++++++++++++++++++++++++++++++++++++
+Instalamos todos los paquetes para nuestra aplicación:
+    *Express
+    *Mongoose
+    *Ejs
+    *passport
+    *passport-local
+    *passport-local-mongoose
+    *body-parser
+    *express-session
+Importamos en variables cada uno de los paquetes que instalamos
+En la carpeta models creamos el archivo "user.js" 
+En este archivo importamos mongoose y definimos el esquema de userSchema con unsername y password
+luego exportamos el modelo
+module.exports = mongoose.model("User", userSchema);
+Luego en app.js importamos el esquema user desde la carpeta models("./models/user")
+
+En user.js importamos passport-local-mongoose y abajo de la definición del esquema ponemos:
+        UserSchema.plugin(passportLocalMongoose)
+        Esto lo que hace es tomar el paquete passport-local-mongoose y agrega unos métodos importantes a nuestro UserSchema
+
+En app.js le indicamos a express que use passport:
+        app.use(passport.initialize());
+        app.use(passport.session());
+
+también indicamos que utilice express-session:
+        app.use(expressSession({
+            secret:"I'm a top secret secret and you won't know me"
+            resave: false,
+            saveUninitialized: false
+        }));
+        
+El secreto que generamos ahí es lo que el servidor utilizará para reconocer la sesión del usuario.
+
+Los próximos dos métodos son muy importantes para passport, son responsables de leer la sesión, 
+tomar la información que está codificada y decodificarla (serializeUser) y luego codificarla 
+nuevamente y ponerla en la sesión de nuevo (deserializeUser):
+        passport.serializeUser(User.serializeUser()); //
+        passport.deserializeUser(User.deserializeUser());
+
+Para hacer la ruta de registro del usuario debemos utilizar bodyParser para poder utilizar los parámetros
+que necesitamos del formulario de registro (username // password):
+
+        app.use(bodyParser.urlencoded({extended: true}));
+
+De esta forma podemos configurar nuestra ruta de registro de la siguiente forma: 
+
+        app.post("/register", function(req, res) {
+            User.register(new User({username: req.body.username}), req.body.password, function(err, user) {
+                if(err){
+                    console.log(err);
+                    res.render("register");
+                }
+                passport.authenticate("local")(req, res, function() {
+                    res.redirect("/secret");
+                });
+            });
+        });
+
+En la primer línea dentro de la función estamos pasando información al modelo User, con el métodos
+register() de passport-local-mongoose, este método podemos utilizarlo gracias a la línea:
+        UserSchema.plugin(passportLocalMongoose);
+en el archivo user.js. Este métdo tiene 3 parámetros. 
+En el primer parámetros indicamos que el registro que se creará es nuevo y pasamos para el modelo "User"
+sólamente el username sacandolo de req.body.username
+        parámetro #1: new User({username: req.body.username})
+En el segundo parámetro pasamos la contraseña, está será codificada y guardada en forma de hash en la
+base de datos
+        parámetro #2: req.body.password
+En el tercer parámetro una callback function con los parámetros para manejar error y toda la información
+de los parámetros previos y mostrar que se creó correctamente
+        function(err, user)
+Dentro de el bloque de código de esta función utilizamos un if en el cuále en su primer bloque 
+manejaremos el error y si diera error lo mostramos y renderizamos la página de registro nuevamente
+Fuera del if, utilizamos un método de passport para indicar el tipo de autenticación que se está
+realizando. Esta función utiliza 3 parámetros: req, res, function()
+Dentro de esta callback function podemos redireccionar a la página una vez registrados.
+        passport.authenticate("local")(req, res, function() {
+            res.redirect("/secret");
+        });
+
+Para el login, necesitamos un formulario con el método post. En el app.post pasamos 3 parámetros, la
+ruta a la cuál corresponde el post, un método de passport y la una callback function:
+        passport.authenticate() //método de passport
+En este método utilizamos dos parámetros, el tipo de autenticación "local" y un objeto con dos  propiedades
+        successRedirect: "/secret"
+        failureRedirect: "/login"
+Estas dos propiedades indican donde debe redireccionar passport en caso que el login sea exitoso o fallido
+        app.post("/login", passport.authenticate("local", {
+            successRedirect: "/secret",
+            failureRedirect: "/login"
+        }), function(req, res) {
+        });
+        
+Para el logout en la ruta app.get("/logout", callback function)
+en la función indicamos en el request que el usuario se deslogeará con un método de passport   
+        req.logout();
+e indicamos que la respuesta redireccione a la página principales
+        res.redirect("/");
+        
+En caso de que estemos deslogeadosPara que no nos permita acceder por URL a la página para la cuál
+deberíamos estar logeados debemos crear una función que verifique que estamos logeados.
+
+        function isLoggedIn(req, res, next){
+            if(req.isAuthenticated()){
+                return next();
+            }
+            res.redirect("/login");
+        }
+Esta misma función la ponemos entre los parámetros de la ruta /secret entre los parámetros ruta y función.
+Lo que hace la función es, a través de un if verifica si al hacer el request, en este caso de la ruta 
+/secret, el usuario se encuentra autenticado:
+        req.isAuthenticated();
+Si es verdadero devuelve next(); esto lo que hace es permitir que avance al siguiente parámetro siendo
+este la callback function para renderizar la página /secret
+Si la verificación es falso, redirecciona a /login.
+
+
+

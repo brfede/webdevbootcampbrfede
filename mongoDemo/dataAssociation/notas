@@ -1,0 +1,59 @@
+Hay dos formas de asociar datos en mongo:
+
+1. Por datos embebidos
+2. Por referencia de objetos
+
+*******************************************************
+            Asociación por datos embebidos
+*******************************************************
+En este caso se hacen dos esquemas: 
+    +El primero es el que será embebido dentro del segundo
+    +El segundo contendrá sus propias propiedades y en una de ellas el esquema del primero
+El primer esquema tiene sus propias propiedades. El segundo también tendrá sus propiedades pero tendrá una más
+en la cuál se pondrá entre corchetes el esquema creado del primero.
+
+Esto hace que ese esquema para esa persona se pueda repetir varias veces (ya que es un array).
+
+*******************************************************
+        Asociación por referencia de objetos
+*******************************************************
+Para este caso tenemos de nuevo los dos esquemas post y user asignados cada uno a su modelo
+
+En el segundo esquema (user) siendo el que va a estar la referencia del id del post, 
+la propiedad que haga referencia se muestra de la realiza de la siguiente forma:
+
+        posts: [
+            {
+                type: mongoose.Schema.Types.ObjectId, //indico que lo que me interesa es el ID
+                ref:"Post"                            // y el ID que quiere es del objeto "Post"
+            }
+        ]
+        
+Cuando creamos un usuario este tiene sus propiedades según el esquema definido para este. No necesariamente todas deben ser
+completadas, si es que así se lo definió al esquema. Por ejemplo la propiedad posts en nuestro caso no es obligatoria.
+
+Cuando este usuario realiza un post primero se crea el Post (Post.create) este contiene el contenido definido por el esquema
+y en la callback function en vez de mostrar el post, utilizamos el siguiente código:
+
+            User.findOne({email: "bob@gmail.com"}, function(err, foundUser){ 
+                
+            })
+    
+    Esto es para que encuentre el usuario que está realizando el post.
+    
+Dentro de la callback function de este método utilizamos lo siguiente: 
+        
+        foundUser.posts.push(post); //para agregar el post realizado en el campo posts del usuario
+        foundUser.save(function(err, data); //para guardar el cambio realizado
+    
+Todo esto sólo guardará los IDs de los post realizados en el campo posts del user.
+
+Si queremos pobla ese campo con los datos de esos posts podemos utilizar lo siguiente:
+
+User.findOne({email: "bob@gmail.com"}).populate("posts").exec(function(err, user){
+    if (err) {
+        console.log(err);
+    } else {
+        console.log(user);
+    }
+});
